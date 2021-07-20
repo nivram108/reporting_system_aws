@@ -3,6 +3,9 @@ package com.antra.report.client.entity;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
+/**
+ * Contains the information of the requested report data with the report file location
+ */
 @MappedSuperclass
 public class BaseReportEntity {
     @Id

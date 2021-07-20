@@ -3,6 +3,9 @@ package com.antra.report.client.entity;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
+/**
+ *
+ */
 @Entity(name="report_request")
 public class ReportRequestEntity {
     @Id

@@ -47,6 +47,12 @@ public class ReportServiceImpl implements ReportService {
         this.emailService = emailService;
     }
 
+    /**
+     * Create a ReportRequestEntity including PDFReportEntity and ExcelReportEntity
+     * Save the ReportRequestEntity to local
+     * @param request user's report request
+     * @return completed ReportRequestEntity
+     */
     private ReportRequestEntity persistToLocal(ReportRequest request) {
         request.setReqId("Req-"+ UUID.randomUUID().toString());
 
@@ -69,12 +75,24 @@ public class ReportServiceImpl implements ReportService {
         return reportRequestRepo.save(entity);
     }
 
+    /**
+     * Create a complete RequestReportEntity with PDFReportEntity and ExcelReportEntity
+     * Use the completed RequestReportEntity to create report files through Excel and PDF Services
+     * @param request user's report request
+     * @return the requesting report data which may contain the report file location for future download
+     */
     @Override
     public ReportVO generateReportsSync(ReportRequest request) {
         persistToLocal(request);
         sendDirectRequests(request);
         return new ReportVO(reportRequestRepo.findById(request.getReqId()).orElseThrow());
     }
+
+    /**
+     * Create report files through Excel and PDF Services and get the response data, which may contain the saved file location
+     * Update the ExcelReportEntity and PDFReportEntity in the previous saved RequestReportEntity
+     * @param request user's report request
+     */
     //TODO:Change to parallel process using Threadpool? CompletableFuture?
     private void sendDirectRequests(ReportRequest request) {
         RestTemplate rs = new RestTemplate();
@@ -100,17 +118,33 @@ public class ReportServiceImpl implements ReportService {
         }
     }
 
+    /**
+     * Update the ExcelReportEntity with generated file location if ExcelService generated the file successfully
+     * @param excelResponse ExcelService response
+     */
     private void updateLocal(ExcelResponse excelResponse) {
         SqsResponse response = new SqsResponse();
         BeanUtils.copyProperties(excelResponse, response);
         updateAsyncExcelReport(response);
     }
+
+    /**
+     * Update the PDFReportEntity with generated file location if PDFService generated the file successfully
+     * @param pdfResponse PDFService response
+     */
     private void updateLocal(PDFResponse pdfResponse) {
         SqsResponse response = new SqsResponse();
         BeanUtils.copyProperties(pdfResponse, response);
         updateAsyncPDFReport(response);
     }
 
+    /**
+     * Create a simple RequestReportEntity without PDFReportEntity and ExcelReportEntity
+     * Send the request to SNS to assign report request to PDF and Excel Services
+     * After the file is generated, the file location will be updated in the RequestReportEntity
+     * @param request user's report request
+     * @return the requesting report data which may contain the report file location for future download
+     */
     @Override
     @Transactional
     public ReportVO generateReportsAsync(ReportRequest request) {
@@ -120,6 +154,11 @@ public class ReportServiceImpl implements ReportService {
         return new ReportVO(entity);
     }
 
+    /**
+     * Update the PDFEntity in the previous saved ReportRequestEntity if the file is successfully generated
+     * Send an email afterward.
+     * @param response SqsResponse that converted from the PDFService response
+     */
     @Override
 //    @Transactional // why this? email could fail
     public void updateAsyncPDFReport(SqsResponse response) {
@@ -140,6 +179,12 @@ public class ReportServiceImpl implements ReportService {
         emailService.sendEmail(to, EmailType.SUCCESS, entity.getSubmitter());
     }
 
+
+    /**
+     * Update the ExcelEntity in the previous saved ReportRequestEntity if the file is successfully generated
+     * Send an email afterward.
+     * @param response SqsResponse that converted from the ExcelService response
+     */
     @Override
 //    @Transactional
     public void updateAsyncExcelReport(SqsResponse response) {
@@ -160,6 +205,11 @@ public class ReportServiceImpl implements ReportService {
         emailService.sendEmail(to, EmailType.SUCCESS, entity.getSubmitter());
     }
 
+
+    /**
+     * Get all ReportRequestEntity and map them into ReportValueObject in list
+     * @return ReportValueObject in list
+     */
     @Override
     @Transactional(readOnly = true)
     public List<ReportVO> getReportList() {
