@@ -48,6 +48,30 @@ public class ReportServiceImpl implements ReportService {
     }
 
     /**
+     * Update the ReportRe
+     * @param reqId
+     * @param request
+     * @return
+     */
+    @Transactional
+    public ReportVO updateReport(String reqId, ReportRequest request) {
+        ReportRequestEntity reportRequestEntity = reportRequestRepo.findById(reqId).orElse(null);
+        reportRequestEntity.getExcelReport().setStatus(ReportStatus.PENDING);
+        reportRequestEntity.getPdfReport().setStatus(ReportStatus.PENDING);
+        reportRequestEntity.setSubmitter(request.getSubmitter());
+        reportRequestEntity.getPdfReport().setCreatedTime(LocalDateTime.now());
+        reportRequestEntity.getExcelReport().setCreatedTime(LocalDateTime.now());
+        reportRequestEntity.setCreatedTime(LocalDateTime.now());
+
+        reportRequestRepo.save(reportRequestEntity);
+
+        request.setReqId(reqId);
+        snsService.sendReportNotification(request);
+        log.info("Send SNS the message: {}",request);
+        return new ReportVO(reportRequestEntity);
+    }
+
+    /**
      * Create a ReportRequestEntity including PDFReportEntity and ExcelReportEntity
      * Save the ReportRequestEntity to local
      * @param request user's report request
@@ -221,6 +245,13 @@ public class ReportServiceImpl implements ReportService {
     public ReportVO getReport(String reqId) {
         return new ReportVO(reportRequestRepo.findById(reqId).orElse(null));
 
+    }
+
+    @Override
+    @Transactional
+    public String deleteReport(String reqId) {
+        reportRequestRepo.deleteById(reqId);
+        return "report " + reqId + " is deleted.";
     }
 
     @Override

@@ -35,7 +35,12 @@ public class ReportController {
         this.reportService = reportService;
     }
 
-    @GetMapping("/report/{id}")
+    /**
+     * Get single report by id
+     * @param id report id to get
+     * @return report value object
+     */
+    @GetMapping("/report/reportById/{id}")
     public ResponseEntity<GeneralResponse> findReportById(@PathVariable String id) {
         log.info("Got Request to find report by id: " + id);
         return ResponseEntity.ok(new GeneralResponse(reportService.getReport(id)));
@@ -52,24 +57,41 @@ public class ReportController {
     }
 
     /**
+     * Delete the report by id
+     * @param reqId report id to delete
+     * @return success delete message to user
+     */
+    @DeleteMapping("/report/delete/{reqId}")
+    public ResponseEntity<GeneralResponse> deleteReport(@PathVariable String reqId) {
+        log.info("Got Request to delete report by id: " + reqId);
+        return ResponseEntity.ok(new GeneralResponse(reportService.deleteReport(reqId)));
+    }
+
+    @PutMapping("/report/update/{reqId}")
+    public ResponseEntity<GeneralResponse> updateReport(@PathVariable String reqId, @RequestBody ReportRequest request) {
+        log.info("Got Request to update report " + reqId);
+        return ResponseEntity.ok(new GeneralResponse(reportService.updateReport(reqId, request)));
+    }
+
+    /**
      * Generate report synchronously, have to complete generating PDF and Excel report to proceed
      * After the report files are generated, the file location will be updated for future downloading
      * Also specifying the request is for Sync report
      * The ReportRequestEntity object will be stored in the database
      * @param request user input data for reports
-     * @return HTTP.ok response
+     * @return HTTP.ok response with completed ReportRequestEntity
      */
     @PostMapping("/report/sync")
     public ResponseEntity<GeneralResponse> createReportDirectly(@RequestBody @Validated ReportRequest request) {
         log.info("Got Request to generate report - sync: {}", request);
         request.setDescription(String.join(" - ", "Sync", request.getDescription()));
-        reportService.generateReportsSync(request);
-        return ResponseEntity.ok(new GeneralResponse());
+//        reportService.generateReportsSync(request);
+//        return ResponseEntity.ok(new GeneralResponse());
         // No need to send back the ReportVO
         // the client will reload the page and obtain the data through get:/report
-//        return ResponseEntity.ok(new GeneralResponse(reportService.generateReportsSync(request)));
-
+        return ResponseEntity.ok(new GeneralResponse(reportService.generateReportsSync(request)));
     }
+
 
 
     /**
@@ -78,14 +100,14 @@ public class ReportController {
      * A RequestReportEntity will be stored in the database immediately, but without report file location.
      * After the report generating services complete their task, file location and status will be updated in the RequestReportEntity.
      * @param request user input data for reports
-     * @return HTTP.ok response
+     * @return HTTP.ok response with simple ReportRequestEntity
      */
     @PostMapping("/report/async")
     public ResponseEntity<GeneralResponse> createReportAsync(@RequestBody @Validated ReportRequest request) {
         log.info("Got Request to generate report - async: {}", request);
         request.setDescription(String.join(" - ", "Async", request.getDescription()));
-        reportService.generateReportsAsync(request);
-        return ResponseEntity.ok(new GeneralResponse());
+
+        return ResponseEntity.ok(new GeneralResponse(reportService.generateReportsAsync(request)));
     }
 
     /**
