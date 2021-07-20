@@ -217,6 +217,13 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ReportVO getReport(String reqId) {
+        return new ReportVO(reportRequestRepo.findById(reqId).orElse(null));
+
+    }
+
+    @Override
     public InputStream getFileBodyByReqId(String reqId, FileType type) {
         ReportRequestEntity entity = reportRequestRepo.findById(reqId).orElseThrow(RequestNotFoundException::new);
         if (type == FileType.PDF) {

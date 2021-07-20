@@ -19,5 +19,7 @@ public interface ReportService {
 
     List<ReportVO> getReportList();
 
+    ReportVO getReport(String reqId);
+
     InputStream getFileBodyByReqId(String reqId, FileType type);
 }

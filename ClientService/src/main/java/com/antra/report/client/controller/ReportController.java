@@ -35,6 +35,12 @@ public class ReportController {
         this.reportService = reportService;
     }
 
+    @GetMapping("/report/{id}")
+    public ResponseEntity<GeneralResponse> findReportById(@PathVariable String id) {
+        log.info("Got Request to find report by id: " + id);
+        return ResponseEntity.ok(new GeneralResponse(reportService.getReport(id)));
+    }
+
     /**
      * Get report list using get method when the webpage is loaded
      * @return report list in the body with HTTP.ok status (200)
