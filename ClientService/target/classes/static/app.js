@@ -107,6 +107,21 @@ function submit(async) {
         }
     });
 }
+
+function useSample() {
+    document.getElementById('inputData').value = '{\n' +
+        ' "description":"Student Math Course Report",\n' +
+        ' "headers":["Student #","Name","Class","Score"],\n' +
+        ' "data":[\n' +
+        '  ["s-008","Sarah","Class-A","B"],\n' +
+        '  ["s-009","Thomas","Class-A","B-"],\n' +
+        '  ["s-010","Joseph","Class-B","A-"],\n' +
+        '  ["s-011","Charles","Class-C","A123123"]\n' +
+        ' ],\n' +
+        ' "submitter":"Mrs. York"\n' +
+        '}';
+}
+
 $( document ).ready(function() {
     loadAll();
     $("#loadAllBtn").on("click",function () {
@@ -114,6 +129,9 @@ $( document ).ready(function() {
     });
     $("#generateBtn").on("click",function () {
         $('#create_report_model').modal('toggle');
+    });
+    $("#use_sample").on("click",function () {
+        useSample();
     });
     $("#create_report").on("click",function () {
         submit(false);
