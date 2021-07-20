@@ -51,13 +51,17 @@ public class ReportController {
      * Also specifying the request is for Sync report
      * The ReportRequestEntity object will be stored in the database
      * @param request user input data for reports
-     * @return Completed Request Value Object in a Http.ok response
+     * @return HTTP.ok response
      */
     @PostMapping("/report/sync")
     public ResponseEntity<GeneralResponse> createReportDirectly(@RequestBody @Validated ReportRequest request) {
         log.info("Got Request to generate report - sync: {}", request);
         request.setDescription(String.join(" - ", "Sync", request.getDescription()));
-        return ResponseEntity.ok(new GeneralResponse(reportService.generateReportsSync(request)));
+        reportService.generateReportsSync(request);
+        return ResponseEntity.ok(new GeneralResponse());
+        // No need to send back the ReportVO
+        // the client will reload the page and obtain the data through get:/report
+//        return ResponseEntity.ok(new GeneralResponse(reportService.generateReportsSync(request)));
 
     }
 
