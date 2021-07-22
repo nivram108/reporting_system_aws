@@ -27,8 +27,13 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,7 +53,7 @@ public class ReportServiceImpl implements ReportService {
     }
 
     /**
-     * Update the ReportRe
+     * Update the ReportRequestEntity with provided id
      * @param reqId
      * @param request
      * @return
@@ -108,7 +113,13 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public ReportVO generateReportsSync(ReportRequest request) {
         persistToLocal(request);
+        long startParallel = System.currentTimeMillis();
+        sendDirectRequestsParallel(request);
+        long startSingle = System.currentTimeMillis();
         sendDirectRequests(request);
+        long end = System.currentTimeMillis();
+        log.info("Parallel time:" + (startSingle - startParallel));
+        log.info("Single time:" + (end - startSingle));
         return new ReportVO(reportRequestRepo.findById(request.getReqId()).orElseThrow());
     }
 
@@ -118,6 +129,47 @@ public class ReportServiceImpl implements ReportService {
      * @param request user's report request
      */
     //TODO:Change to parallel process using Threadpool? CompletableFuture?
+    private void sendDirectRequestsParallel(ReportRequest request) {
+        RestTemplate rs = new RestTemplate();
+        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(2);
+        CompletableFuture<Void> excelReportFuture = CompletableFuture.runAsync(() -> {
+            ExcelResponse excelResponse = new ExcelResponse();
+            try {
+                excelResponse = rs.postForEntity("http://localhost:8888/excel", request, ExcelResponse.class).getBody();
+            } catch(Exception e){
+                log.error("Excel Generation Error (Sync) : e", e);
+                excelResponse.setReqId(request.getReqId());
+                excelResponse.setFailed(true);
+            } finally {
+                updateLocal(excelResponse);
+            }
+
+        }, executor);
+        CompletableFuture<Void> pdfReportFuture = CompletableFuture.runAsync(() -> {
+            PDFResponse pdfResponse = new PDFResponse();
+            try {
+                pdfResponse = rs.postForEntity("http://localhost:9999/pdf", request, PDFResponse.class).getBody();
+            } catch(Exception e){
+                log.error("PDF Generation Error (Sync) : e", e);
+                pdfResponse.setReqId(request.getReqId());
+                pdfResponse.setFailed(true);
+            } finally {
+                updateLocal(pdfResponse);
+            }
+        }, executor);
+
+        CompletableFuture<Void> reportFuture = CompletableFuture.allOf(excelReportFuture, pdfReportFuture);
+        try {
+            reportFuture.get();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
     private void sendDirectRequests(ReportRequest request) {
         RestTemplate rs = new RestTemplate();
         ExcelResponse excelResponse = new ExcelResponse();
@@ -131,6 +183,7 @@ public class ReportServiceImpl implements ReportService {
         } finally {
             updateLocal(excelResponse);
         }
+
         try {
             pdfResponse = rs.postForEntity("http://localhost:9999/pdf", request, PDFResponse.class).getBody();
         } catch(Exception e){
@@ -140,8 +193,10 @@ public class ReportServiceImpl implements ReportService {
         } finally {
             updateLocal(pdfResponse);
         }
-    }
 
+
+
+    }
     /**
      * Update the ExcelReportEntity with generated file location if ExcelService generated the file successfully
      * @param excelResponse ExcelService response
