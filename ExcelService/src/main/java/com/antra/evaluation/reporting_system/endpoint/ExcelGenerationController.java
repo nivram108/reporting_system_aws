@@ -40,6 +40,11 @@ public class ExcelGenerationController {
         this.excelService = excelService;
     }
 
+    /**
+     * Generate excel report from post request
+     * @param request user request contains desired report data
+     * @return
+     */
     @PostMapping(value = "/excel", consumes = "application/json", produces = "application/json")
     @ApiOperation("Generate Excel")
     public ResponseEntity<ExcelResponse> createExcel(@RequestBody ExcelRequest request) {

@@ -1,7 +1,10 @@
 package com.antra.evaluation.reporting_system.pojo.report;
 
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.LocalDateTime;
 
+@Document
 public class ExcelFile {
     private String fileId;
     private String fileName;

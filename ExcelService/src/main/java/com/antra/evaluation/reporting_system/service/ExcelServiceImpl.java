@@ -1,5 +1,6 @@
 package com.antra.evaluation.reporting_system.service;
 
+import com.amazonaws.services.s3.AmazonS3;
 import com.antra.evaluation.reporting_system.exception.FileGenerationException;
 import com.antra.evaluation.reporting_system.pojo.api.ExcelRequest;
 import com.antra.evaluation.reporting_system.pojo.api.MultiSheetExcelRequest;
@@ -11,6 +12,7 @@ import com.antra.evaluation.reporting_system.repo.ExcelRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
@@ -23,19 +25,24 @@ public class ExcelServiceImpl implements ExcelService {
 
     private static final Logger log = LoggerFactory.getLogger(ExcelServiceImpl.class);
 
-    ExcelRepository excelRepository;
+    private final ExcelRepository excelRepository;
 
     private ExcelGenerationService excelGenerationService;
 
+    private final AmazonS3 s3Client;
+
+    @Value("${s3.bucket}")
+    private String s3Bucket;
     @Autowired
-    public ExcelServiceImpl(ExcelRepository excelRepository, ExcelGenerationService excelGenerationService) {
+    public ExcelServiceImpl(ExcelRepository excelRepository, ExcelGenerationService excelGenerationService, AmazonS3 s3Client) {
         this.excelRepository = excelRepository;
         this.excelGenerationService = excelGenerationService;
+        this.s3Client = s3Client;
     }
 
     @Override
     public InputStream getExcelBodyById(String id) throws FileNotFoundException {
-        Optional<ExcelFile> fileInfo = excelRepository.getFileById(id);
+        Optional<ExcelFile> fileInfo = excelRepository.findById(id);
         return new FileInputStream(fileInfo.orElseThrow(FileNotFoundException::new).getFileLocation());
     }
 
@@ -64,24 +71,36 @@ public class ExcelServiceImpl implements ExcelService {
 //            log.error("Error in generateFile()", e);
             throw new FileGenerationException(e);
         }
-        excelRepository.saveFile(fileInfo);
+        File temp = new File(fileInfo.getFileLocation());
         log.debug("Excel File Generated : {}", fileInfo);
+        s3Client.putObject(s3Bucket, fileInfo.getFileId(), temp);
+        log.debug("Uploaded");
+
+        fileInfo.setFileLocation(String.join("/",s3Bucket,fileInfo.getFileId()));
+        excelRepository.save(fileInfo);
+
+
+        log.debug("clear tem file {}", fileInfo.getFileLocation());
+        if(temp.delete()){
+            log.debug("cleared");
+        }
         return fileInfo;
     }
 
     @Override
     public List<ExcelFile> getExcelList() {
-        return excelRepository.getFiles();
+        return excelRepository.findAll();
     }
 
     @Override
     public ExcelFile deleteFile(String id) throws FileNotFoundException {
-        ExcelFile excelFile = excelRepository.deleteFile(id);
+        ExcelFile excelFile = excelRepository.findById(id).orElse(null);
         if (excelFile == null) {
             throw new FileNotFoundException();
         }
         File file = new File(excelFile.getFileLocation());
         file.delete();
+        excelRepository.deleteById(id);
         return excelFile;
     }
 
