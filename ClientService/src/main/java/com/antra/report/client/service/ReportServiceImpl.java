@@ -14,12 +14,14 @@ import com.antra.report.client.pojo.reponse.ReportVO;
 import com.antra.report.client.pojo.reponse.SqsResponse;
 import com.antra.report.client.pojo.request.ReportRequest;
 import com.antra.report.client.repository.ReportRequestRepo;
+//import com.netflix.discovery.EurekaClient;
+import com.netflix.discovery.EurekaClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -44,6 +46,15 @@ public class ReportServiceImpl implements ReportService {
     private final SNSService snsService;
     private final AmazonS3 s3Client;
     private final EmailService emailService;
+
+    @Autowired
+    private EurekaClient pdfClient;
+
+    @Autowired
+    private EurekaClient excelClient;
+
+    @Autowired
+    private RestTemplate restTemplate;
 
     public ReportServiceImpl(ReportRequestRepo reportRequestRepo, SNSService snsService, AmazonS3 s3Client, EmailService emailService) {
         this.reportRequestRepo = reportRequestRepo;
@@ -116,29 +127,33 @@ public class ReportServiceImpl implements ReportService {
         long startParallel = System.currentTimeMillis();
         sendDirectRequestsParallel(request);
         long startSingle = System.currentTimeMillis();
-        sendDirectRequests(request);
-        long end = System.currentTimeMillis();
+//        sendDirectRequests(request);
+//        long end = System.currentTimeMillis();
         log.info("Parallel time:" + (startSingle - startParallel));
-        log.info("Single time:" + (end - startSingle));
+//        log.info("Single time:" + (end - startSingle));
         return new ReportVO(reportRequestRepo.findById(request.getReqId()).orElseThrow());
     }
 
     /**
      * Create report files through Excel and PDF Services and get the response data, which may contain the saved file location
      * Update the ExcelReportEntity and PDFReportEntity in the previous saved RequestReportEntity
-     * @param request user's report request
+     * @param reportRequest user's report request
      */
     //TODO:Change to parallel process using Threadpool? CompletableFuture?
-    private void sendDirectRequestsParallel(ReportRequest request) {
-        RestTemplate rs = new RestTemplate();
+    private void sendDirectRequestsParallel(ReportRequest reportRequest) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<ReportRequest> httpEntity = new HttpEntity<>(reportRequest, headers);
         ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(2);
         CompletableFuture<Void> excelReportFuture = CompletableFuture.runAsync(() -> {
             ExcelResponse excelResponse = new ExcelResponse();
+            String url = excelClient.getNextServerFromEureka("excel-service", false).getHomePageUrl();
+            log.info("Get Excel Service url: " + url);
             try {
-                excelResponse = rs.postForEntity("http://localhost:8888/excel", request, ExcelResponse.class).getBody();
+                excelResponse = restTemplate.postForEntity( "http://excel-service/excel", httpEntity, ExcelResponse.class).getBody();
             } catch(Exception e){
                 log.error("Excel Generation Error (Sync) : e", e);
-                excelResponse.setReqId(request.getReqId());
+                excelResponse.setReqId(reportRequest.getReqId());
                 excelResponse.setFailed(true);
             } finally {
                 updateLocal(excelResponse);
@@ -147,11 +162,13 @@ public class ReportServiceImpl implements ReportService {
         }, executor);
         CompletableFuture<Void> pdfReportFuture = CompletableFuture.runAsync(() -> {
             PDFResponse pdfResponse = new PDFResponse();
+            String url = pdfClient.getNextServerFromEureka("pdf-service", false).getHomePageUrl();
+            log.info("Get PDF Service url: " + url);
             try {
-                pdfResponse = rs.postForEntity("http://localhost:9999/pdf", request, PDFResponse.class).getBody();
+                pdfResponse = restTemplate.postForEntity("http://pdf-service/pdf", httpEntity, PDFResponse.class).getBody();
             } catch(Exception e){
                 log.error("PDF Generation Error (Sync) : e", e);
-                pdfResponse.setReqId(request.getReqId());
+                pdfResponse.setReqId(reportRequest.getReqId());
                 pdfResponse.setFailed(true);
             } finally {
                 updateLocal(pdfResponse);
@@ -170,25 +187,29 @@ public class ReportServiceImpl implements ReportService {
 
     }
 
-    private void sendDirectRequests(ReportRequest request) {
-        RestTemplate rs = new RestTemplate();
+    private void sendDirectRequests(ReportRequest reportRequest) {
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
         ExcelResponse excelResponse = new ExcelResponse();
         PDFResponse pdfResponse = new PDFResponse();
+        log.info("Request :" + reportRequest);
+        HttpEntity<ReportRequest> httpEntity = new HttpEntity<>(reportRequest, headers);
         try {
-            excelResponse = rs.postForEntity("http://localhost:8888/excel", request, ExcelResponse.class).getBody();
+            excelResponse = restTemplate.postForEntity("http://localhost:8888/excel", httpEntity, ExcelResponse.class).getBody();
         } catch(Exception e){
             log.error("Excel Generation Error (Sync) : e", e);
-            excelResponse.setReqId(request.getReqId());
+            excelResponse.setReqId(reportRequest.getReqId());
             excelResponse.setFailed(true);
         } finally {
             updateLocal(excelResponse);
         }
 
         try {
-            pdfResponse = rs.postForEntity("http://localhost:9999/pdf", request, PDFResponse.class).getBody();
+            pdfResponse = restTemplate.postForEntity("http://localhost:9999/pdf", httpEntity, PDFResponse.class).getBody();
         } catch(Exception e){
             log.error("PDF Generation Error (Sync) : e", e);
-            pdfResponse.setReqId(request.getReqId());
+            pdfResponse.setReqId(reportRequest.getReqId());
             pdfResponse.setFailed(true);
         } finally {
             updateLocal(pdfResponse);
@@ -311,6 +332,7 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public InputStream getFileBodyByReqId(String reqId, FileType type) {
+        RestTemplate restTemplate = new RestTemplate();
         ReportRequestEntity entity = reportRequestRepo.findById(reqId).orElseThrow(RequestNotFoundException::new);
         if (type == FileType.PDF) {
             String fileLocation = entity.getPdfReport().getFileLocation(); // this location is s3 "bucket/key"
@@ -325,7 +347,6 @@ public class ReportServiceImpl implements ReportService {
 //            } catch (FileNotFoundException e) {
 //                log.error("No file found", e);
 //            }
-            RestTemplate restTemplate = new RestTemplate();
 //            InputStream is = restTemplate.execute(, HttpMethod.GET, null, ClientHttpResponse::getBody, fileId);
             ResponseEntity<Resource> exchange = restTemplate.exchange("http://localhost:8888/excel/{id}/content",
                     HttpMethod.GET, null, Resource.class, fileId);

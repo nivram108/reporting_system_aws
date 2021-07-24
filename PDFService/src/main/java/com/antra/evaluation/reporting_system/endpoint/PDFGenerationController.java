@@ -27,7 +27,7 @@ public class PDFGenerationController {
     }
 
 
-    @PostMapping("/pdf")
+    @PostMapping(value = "/pdf", consumes = "application/json", produces = "application/json")
     public ResponseEntity<PDFResponse> createPDF(@RequestBody @Validated PDFRequest request) {
         log.info("Got request to generate PDF: {}", request);
 

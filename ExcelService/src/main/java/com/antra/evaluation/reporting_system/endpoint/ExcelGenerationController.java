@@ -40,9 +40,9 @@ public class ExcelGenerationController {
         this.excelService = excelService;
     }
 
-    @PostMapping("/excel")
+    @PostMapping(value = "/excel", consumes = "application/json", produces = "application/json")
     @ApiOperation("Generate Excel")
-    public ResponseEntity<ExcelResponse> createExcel(@RequestBody @Validated ExcelRequest request) {
+    public ResponseEntity<ExcelResponse> createExcel(@RequestBody ExcelRequest request) {
         log.debug("Got Request to Create Single Sheet Excel:{}", request);
         ExcelFile fileInfo = excelService.generateFile(request, false);
         ExcelResponse response = new ExcelResponse();
