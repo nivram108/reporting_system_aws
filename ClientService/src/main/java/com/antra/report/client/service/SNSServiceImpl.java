@@ -24,6 +24,10 @@ public class SNSServiceImpl implements SNSService {
         this.notificationMessagingTemplate.sendNotification(snsTopic, message, null);
     }
 
+    /**
+     * Send ReportRequest to PDFService and ExcelService through SNS
+     * @param request desired report data
+     */
     @Override
     public void sendReportNotification(ReportRequest request) {
         send(request);
