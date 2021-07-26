@@ -98,8 +98,10 @@ public class ExcelServiceImpl implements ExcelService {
         if (excelFile == null) {
             throw new FileNotFoundException();
         }
-        File file = new File(excelFile.getFileLocation());
-        file.delete();
+//        File file = new File(excelFile.getFileLocation());
+//        file.delete();
+        s3Client.deleteObject(s3Bucket, id);
+        log.info("Delete file in s3: " + id);
         excelRepository.deleteById(id);
         return excelFile;
     }
