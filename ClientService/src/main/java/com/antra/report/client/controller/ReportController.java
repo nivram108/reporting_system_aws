@@ -67,6 +67,12 @@ public class ReportController {
         return ResponseEntity.ok(new GeneralResponse(reportService.deleteReport(reqId)));
     }
 
+    /**
+     * Update the report by id
+     * @param reqId report id to update
+     * @param request report data to update
+     * @return
+     */
     @PutMapping("/report/update/{reqId}")
     public ResponseEntity<GeneralResponse> updateReport(@PathVariable String reqId, @RequestBody ReportRequest request) {
         log.info("Got Request to update report " + reqId);
