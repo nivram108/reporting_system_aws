@@ -64,7 +64,7 @@ public class ReportServiceImpl implements ReportService {
     }
 
     /**
-     * Update the ReportRequestEntity with provided id
+     * Update the ReportRequestEntity with provided id and regenerate the report files
      * @param reqId
      * @param request
      * @return
@@ -160,6 +160,13 @@ public class ReportServiceImpl implements ReportService {
 
     }
 
+    /**
+     * Send ReportRequest to PDFService to generate the excel report directly through API and set the report file location to stored ReportEntity
+     * @param reportRequest desired
+     * @param httpEntity
+     * @param executor
+     * @return
+     */
     private CompletableFuture<Void> sendDirectPDFRequest(ReportRequest reportRequest, HttpEntity<ReportRequest> httpEntity, ThreadPoolExecutor executor) {
         CompletableFuture<Void> pdfReportFuture = CompletableFuture.runAsync(() -> {
             PDFResponse pdfResponse = new PDFResponse();
@@ -179,8 +186,8 @@ public class ReportServiceImpl implements ReportService {
     }
 
     /**
-     * Send
-     * @param reportRequest
+     * Send ReportRequest to ExcelService to generate the excel report directly through API and set the report file location to stored ReportEntity
+     * @param reportRequest desired
      * @param httpEntity
      * @param executor
      * @return
@@ -204,6 +211,11 @@ public class ReportServiceImpl implements ReportService {
         return excelReportFuture;
     }
 
+    /**
+     * *Deprecated*
+     *
+     * @param reportRequest
+     */
     private void sendDirectRequests(ReportRequest reportRequest) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
@@ -237,22 +249,26 @@ public class ReportServiceImpl implements ReportService {
     }
     /**
      * Update the ExcelReportEntity with generated file location if ExcelService generated the file successfully
-     * @param excelResponse ExcelService response
+     * @param excelResponse ExcelService response contains generated file location
      */
     private void updateLocal(ExcelResponse excelResponse) {
         SqsResponse response = new SqsResponse();
         BeanUtils.copyProperties(excelResponse, response);
         updateAsyncExcelReport(response);
+        String submitter = reportRequestRepo.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new).getSubmitter();
+        sendReportEmail(submitter);
     }
 
     /**
      * Update the PDFReportEntity with generated file location if PDFService generated the file successfully
-     * @param pdfResponse PDFService response
+     * @param pdfResponse PDFService response contains generated file location
      */
     private void updateLocal(PDFResponse pdfResponse) {
         SqsResponse response = new SqsResponse();
         BeanUtils.copyProperties(pdfResponse, response);
         updateAsyncPDFReport(response);
+        String submitter = reportRequestRepo.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new).getSubmitter();
+        sendReportEmail(submitter);
     }
 
     /**
@@ -277,7 +293,7 @@ public class ReportServiceImpl implements ReportService {
      * @param response SqsResponse that converted from the PDFService response
      */
     @Override
-//    @Transactional // why this? email could fail
+    @Transactional // why this? email could fail
     public void updateAsyncPDFReport(SqsResponse response) {
         ReportRequestEntity entity = reportRequestRepo.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new);
         var pdfReport = entity.getPdfReport();
@@ -292,8 +308,15 @@ public class ReportServiceImpl implements ReportService {
         }
         entity.setUpdatedTime(LocalDateTime.now());
         reportRequestRepo.save(entity);
+    }
+
+    /**
+     * Send report email
+     * @param submitter
+     */
+    private void sendReportEmail(String submitter) {
         String to = "youremail@gmail.com";
-        emailService.sendEmail(to, EmailType.SUCCESS, entity.getSubmitter());
+        emailService.sendEmail(to, EmailType.SUCCESS, submitter);
     }
 
 
@@ -303,7 +326,7 @@ public class ReportServiceImpl implements ReportService {
      * @param response SqsResponse that converted from the ExcelService response
      */
     @Override
-//    @Transactional
+    @Transactional
     public void updateAsyncExcelReport(SqsResponse response) {
         ReportRequestEntity entity = reportRequestRepo.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new);
         var excelReport = entity.getExcelReport();
@@ -318,8 +341,6 @@ public class ReportServiceImpl implements ReportService {
         }
         entity.setUpdatedTime(LocalDateTime.now());
         reportRequestRepo.save(entity);
-        String to = "youremail@gmail.com";
-        emailService.sendEmail(to, EmailType.SUCCESS, entity.getSubmitter());
     }
 
 
@@ -332,6 +353,7 @@ public class ReportServiceImpl implements ReportService {
     public List<ReportVO> getReportList() {
         return reportRequestRepo.findAll().stream().map(ReportVO::new).collect(Collectors.toList());
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -347,6 +369,12 @@ public class ReportServiceImpl implements ReportService {
         return "report " + reqId + " is deleted.";
     }
 
+    /**
+     * Access the file, either PDF or Excel, by required report id and download the report
+     * @param reqId required report id
+     * @param type desired report type, either PDF or Excel
+     * @return report file
+     */
     @Override
     public InputStream getFileBodyByReqId(String reqId, FileType type) {
         RestTemplate restTemplate = new RestTemplate();
