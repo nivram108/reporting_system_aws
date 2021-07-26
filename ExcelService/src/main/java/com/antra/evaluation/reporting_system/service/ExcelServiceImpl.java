@@ -42,8 +42,14 @@ public class ExcelServiceImpl implements ExcelService {
 
     @Override
     public InputStream getExcelBodyById(String id) throws FileNotFoundException {
-        Optional<ExcelFile> fileInfo = excelRepository.findById(id);
-        return new FileInputStream(fileInfo.orElseThrow(FileNotFoundException::new).getFileLocation());
+        return s3Client.getObject(s3Bucket, id).getObjectContent();
+    }
+
+    @Override
+    public ExcelFile getExcelFile(String id) {
+        ExcelFile excelFile = excelRepository.findById(id).orElse(null);
+        log.info("Get excel file by id:" + excelFile);
+        return excelFile;
     }
 
     @Override

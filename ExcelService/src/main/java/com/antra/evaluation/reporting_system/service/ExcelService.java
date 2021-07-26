@@ -10,6 +10,8 @@ import java.util.List;
 public interface ExcelService {
     InputStream getExcelBodyById(String id) throws FileNotFoundException;
 
+    ExcelFile getExcelFile(String id);
+
     ExcelFile generateFile(ExcelRequest request, boolean multisheet);
 
     List<ExcelFile> getExcelList();
