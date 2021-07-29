@@ -435,11 +435,11 @@ public class ReportServiceImpl implements ReportService {
 /**
  *                    (before)                                                                 (after)
  *                       sync                                                                    sync
- *                      /    \                                                                    |
- *                     /      \                                                      update(SQSResponse, Type)
- *     udpate(PDFResponse)   update(ExcelResponse)                                              |
- *              |                       |                                            updateFileData(
- *   updatePDF(SQSResponse)  udpateExcel(SQSResponse)
+ *                      /    \                                                                  /    \
+ *                     /      \                                                                /      \
+ *     udpate(PDFResponse)   update(ExcelResponse)                            udpate(PDFResponse)   update(ExcelResponse)
+ *              |                       |                                                      \      /
+ *   updatePDF(SQSResponse)  udpateExcel(SQSResponse)                               updateFileData(SQSResponse, Type)
  *
  *
  *
