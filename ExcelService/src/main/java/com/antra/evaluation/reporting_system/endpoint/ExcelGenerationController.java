@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.FileCopyUtils;
@@ -36,6 +37,9 @@ public class ExcelGenerationController {
     ExcelService excelService;
 
     @Autowired
+    private ServerProperties serverProperties;
+
+    @Autowired
     public ExcelGenerationController(ExcelService excelService) {
         this.excelService = excelService;
     }
@@ -58,9 +62,15 @@ public class ExcelGenerationController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    /**
+     * Set the download local link
+     * @param fileId
+     * @return
+     */
     private String generateFileDownloadLink(String fileId) {
+        int port = serverProperties.getPort();
         UriComponents uriComponents = UriComponentsBuilder.newInstance()
-                .scheme("http").host("localhost:8080").path(DOWNLOAD_API_URI) // localhost:8080 need to be externalized as parameter
+                .scheme("http").host("localhost:" + port).path(DOWNLOAD_API_URI) // localhost:8080 need to be externalized as parameter
                 .buildAndExpand(fileId);
         return uriComponents.toUriString();
     }
@@ -80,6 +90,10 @@ public class ExcelGenerationController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    /**
+     * Get all Excel file data
+     * @return
+     */
     @GetMapping("/excel")
     @ApiOperation("List all existing files")
     public ResponseEntity<List<ExcelResponse>> listExcels() {
@@ -95,9 +109,9 @@ public class ExcelGenerationController {
     }
 
     /**
-     *
-     * @param id
-     * @param response
+     * Download Excel report
+     * @param id report id
+     * @param response Excel report file
      * @throws IOException
      */
     @GetMapping(DOWNLOAD_API_URI)
@@ -111,6 +125,12 @@ public class ExcelGenerationController {
         log.debug("Downloaded File:{}", id);
     }
 
+    /**
+     * Delete Excel report stored in S3 by Id.
+     * @param id
+     * @return
+     * @throws FileNotFoundException
+     */
     @DeleteMapping("/excel/{id}")
     public ResponseEntity<ExcelResponse> deleteExcel(@PathVariable String id) throws FileNotFoundException {
         log.debug("Got Request to Delete File:{}", id);
