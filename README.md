@@ -8,7 +8,7 @@
 - Add description for most methods in Component classes in Javadoc comment.
 - Implement Eureka service. Add one Eureka server and make three existing service into Eureka clients.
 - Find suitable Spring Cloud version(`Hoxton.SR5`) which is compatible to current Spring Boot version (`2.3.0.RELEASE`)
-- Solving dependency issue due to Jersey RestTemplate bean problem.
+- Solving dependency issue due to Jersey RestTemplate bean conflict problem.
 
 ### Client Service
 - Add descriptions to most methods in Component level in Javadoc comment format.
