@@ -48,6 +48,12 @@ public class ExcelGenerationServiceImpl implements ExcelGenerationService {
         }
     }
 
+    /**
+     * Generate a temporary Excel file
+     * @param data report data for generating Excel report
+     * @return Excel report file
+     * @throws IOException
+     */
     @Override
     public File generateExcelReport(ExcelData data) throws IOException {
         validateDate(data);
@@ -101,18 +107,19 @@ public class ExcelGenerationServiceImpl implements ExcelGenerationService {
         }
 
 
-        File currDir = new File(".");
-        String path = currDir.getAbsolutePath();
-        String fileLocation = path.substring(0, path.length() - 1) + data.getFileId() +".xlsx";
-
-        FileOutputStream outputStream = new FileOutputStream(fileLocation);
+//        File currDir = new File(".");
+//        String path = currDir.getAbsolutePath();
+//        String fileLocation = path.substring(0, path.length() - 1) + data.getFileId() +".xlsx";
+        File outputFile = File.createTempFile("temp", ".xlsx");
+        FileOutputStream outputStream = new FileOutputStream(outputFile);
         workbook.write(outputStream);
         try {
             workbook.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return new File(fileLocation);
+//        return new File(fileLocation);
+        return outputFile;
     }
 
 }
