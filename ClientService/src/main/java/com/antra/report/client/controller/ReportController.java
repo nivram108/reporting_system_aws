@@ -40,7 +40,7 @@ public class ReportController {
      * @param id report id to get
      * @return report value object
      */
-    @GetMapping("/report/reportById/{id}")
+    @GetMapping("/report/content/{id}")
     public ResponseEntity<GeneralResponse> findReportById(@PathVariable String id) {
         log.info("Got Request to find report by id: " + id);
         return ResponseEntity.ok(new GeneralResponse(reportService.getReport(id)));
@@ -91,10 +91,7 @@ public class ReportController {
     public ResponseEntity<GeneralResponse> createReportDirectly(@RequestBody @Validated ReportRequest request) {
         log.info("Got Request to generate report - sync: {}", request);
         request.setDescription(String.join(" - ", "Sync", request.getDescription()));
-//        reportService.generateReportsSync(request);
-//        return ResponseEntity.ok(new GeneralResponse());
-        // No need to send back the ReportVO
-        // the client will reload the page and obtain the data through get:/report
+
         return ResponseEntity.ok(new GeneralResponse(reportService.generateReportsSync(request)));
     }
 
