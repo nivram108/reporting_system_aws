@@ -1,33 +1,38 @@
-# Antra SEP java evaluation project
-## 1. Setup the environment and make it run.
- All three projects are Sprintboot application.<br>
+# Reportimg System Aws - Chun-Liang Yang
 
- Need to setup AWS SNS/SQS/S3 in order to use the async API.(Videos in LMS)<br>
+## Development notes
 
- Make sure to update your <i>application.properties</i> file with your AWS IAM account secrets and region.(Videos in LMS)
+### Environment
+- Environment setup, including SNS, S3, and sendEmail Lambda function.
+- Solving issue of Gmail authentication for sendEmail function
+- Add description for most methods in Component classes in Javadoc comment.
+- Implement Eureka service. Add one Eureka server and make three existing service into Eureka clients.
+- Find suitable Spring Cloud version(`Hoxton.SR5`) which is compatible to current Spring Boot version (`2.3.0.RELEASE`)
+- Solving dependency issue due to Jersey RestTemplate bean problem.
 
- AWS Lambda(Sending email) is optional. Code is in [sendEmailCode.py](./lambda/sendEmailCode.py)
+### Client Service
+- Add descriptions to most methods in Component level in Javadoc comment format.
+- Improve functionality of using Sample Data to demo. Replace copy-paste method to button generated content.
+- Replace `sendDirectRequests` with `sendDirectRequestsParallel`, using `CompletableFuture` and `FixedThreadPool`
+- Use Eureka discovery for calling request API of `ExcelService` and `PDFService` in `sendDirectRequestsParallel`
+- Add HttpHeaders as specifying JSON as content type in `sendDirectRequestsParallel`
+- Add multiple Rest APIs
+    - Get single report by id
+    - DELETE single report by id
+    - UPDATE single report by id
+- Separate sendEmail from `@Transactional updateReport` with Sqsresponse function
+- Merge `updateAsyncExcelReport` and `updateAsyncPDFReport` and use extra param FileType for choosing updating report file type
 
-## 2. Understand the structure and details
-Look at the [ReportingSystemArchitecture.pdf](./ReportingSystemArchitecture.pdf)
+### ExcelService
+- Save Excel file to S3
+- Remove saving Excel file on local in `excelGenerationService`
+- Annotate the consumes and produces of `createExcel` as JSON to avoid content type error
+- Implement delete report by id, while also delete file on S3
+- Change the fileLocation to ExcelService port, and make the download api download Excel file from S3
 
-## 3. Make improvement in the code/system level.
-Suggestions:
-0. Add new features like update/delete/edit report.
-1. Improve sync API performance by using multithreading and sending request concurrently to both services.
-2. Use a database instead of hashmap in the ExcelRepositoryImpl.
-3. Improve code coverage by adding more tests.
-4. Convert sync API into microservices by adding Eureka/Ribbon support.
-5. Add pressure tests to benchmark the system.
-6. Change MongoDB to DynamoDB.
-7. Fix bugs.
-8. Make the system more robust by adding fault tolerance such like : DeadLetter Queue, retry, cache, fallback etc.
-9. Add security and jwt support.
-10. Add more fancy UI using angular/react.
-11. Setup your CI/CD pipeline.
-12. Add new Services like PNGService, JPEGService etc
-13. ...
+### PDFService
+- Annotate the consumes and produces of `createExcel` as JSON to avoid content type error
 
-## 4. Send your code to [Dawei Zhuang(dawei.zhuang@antra.com)](dawei.zhuang@antra.com) using Github/Gitlab. 
-Make sure there is README.MD to indicate what did you change/add to the project.
+## Other Discussions
 
+- Naming : following the current naming format, but naming of `Pdf` / `PDF` is inconsistent. Most part in the project is using `PDF`, while ReportSQSListener is using `Pdf`.
