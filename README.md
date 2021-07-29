@@ -17,7 +17,7 @@
 - Use Eureka discovery for calling request API of `ExcelService` and `PDFService` in `sendDirectRequestsParallel`
 - Add HttpHeaders as specifying JSON as content type in `sendDirectRequestsParallel`
 - Add multiple Rest APIs
-    - Get single report by id
+    - GET single report by id
     - DELETE single report by id
     - UPDATE single report by id
 - Separate sendEmail from `@Transactional updateReport` with Sqsresponse function
