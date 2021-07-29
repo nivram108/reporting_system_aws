@@ -52,6 +52,12 @@ public class ExcelServiceImpl implements ExcelService {
         return excelFile;
     }
 
+    /**
+     * Generate Excel report and save to S3 storage
+     * @param request report data for generating Excel report file
+     * @param multisheet if its a multisheet request
+     * @return Excel file with set file location
+     */
     @Override
     public ExcelFile generateFile(ExcelRequest request, boolean multisheet) {
         ExcelFile fileInfo = new ExcelFile();
@@ -93,11 +99,21 @@ public class ExcelServiceImpl implements ExcelService {
         return fileInfo;
     }
 
+    /**
+     * Get all Excel file data
+     * @return
+     */
     @Override
     public List<ExcelFile> getExcelList() {
         return excelRepository.findAll();
     }
 
+    /**
+     * Delete Excel file by id as well as delete report file in S3 storage
+     * @param id
+     * @return
+     * @throws FileNotFoundException
+     */
     @Override
     public ExcelFile deleteFile(String id) throws FileNotFoundException {
         ExcelFile excelFile = excelRepository.findById(id).orElse(null);
