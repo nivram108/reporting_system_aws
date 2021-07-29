@@ -38,6 +38,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
 
+/**
+ * ReportServiceImpl handles the details of http request which is sent to ReportController
+ * including reading / writing data from / to the database and communicate with PDFService and ExcelService.
+ */
 @Service
 public class ReportServiceImpl implements ReportService {
     private static final Logger log = LoggerFactory.getLogger(ReportServiceImpl.class);
@@ -65,9 +69,9 @@ public class ReportServiceImpl implements ReportService {
 
     /**
      * Update the ReportRequestEntity with provided id and regenerate the report files
-     * @param reqId
-     * @param request
-     * @return
+     * @param reqId report id to update
+     * @param request report data to update
+     * @return updated report object value
      */
     @Transactional
     public ReportVO updateReport(String reqId, ReportRequest request) {
@@ -338,6 +342,7 @@ public class ReportServiceImpl implements ReportService {
             excelReport.setFileId(response.getFileId());
             excelReport.setFileLocation(response.getFileLocation());
             excelReport.setFileSize(response.getFileSize());
+            log.info("Set file location:" + excelReport.getFileLocation());
         }
         entity.setUpdatedTime(LocalDateTime.now());
         reportRequestRepo.save(entity);
@@ -355,6 +360,11 @@ public class ReportServiceImpl implements ReportService {
     }
 
 
+    /**
+     * Get single report by Id
+     * @param reqId report id
+     * @return report value object
+     */
     @Override
     @Transactional(readOnly = true)
     public ReportVO getReport(String reqId) {
@@ -362,6 +372,11 @@ public class ReportServiceImpl implements ReportService {
 
     }
 
+    /**
+     * Delete report by id
+     * @param reqId report id to delete
+     * @return delete success message
+     */
     @Override
     @Transactional
     public String deleteReport(String reqId) {

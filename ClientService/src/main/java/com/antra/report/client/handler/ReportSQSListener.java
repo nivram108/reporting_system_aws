@@ -1,5 +1,6 @@
 package com.antra.report.client.handler;
 
+import com.antra.report.client.exception.RequestNotFoundException;
 import com.antra.report.client.pojo.reponse.SqsResponse;
 import com.antra.report.client.service.ReportService;
 import org.slf4j.Logger;
@@ -7,6 +8,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cloud.aws.messaging.listener.annotation.SqsListener;
 import org.springframework.stereotype.Component;
 
+/**
+ * ReportSQSListener handles the responses from both PDFService and ExcelService, which tell the ClientService the asynchronous report request for
+ * generating PDF and Excel report files is complete or failed
+ */
 @Component
 public class ReportSQSListener {
 
@@ -18,13 +23,26 @@ public class ReportSQSListener {
         this.reportService = reportService;
     }
 
+    /**
+     * Triggered when receiving request response from PDF service, which is responding the async report request sent earlier
+     * This will lead to updating tne target report with the PDF file location and report status.
+     * @param response response from PDF service
+     */
     @SqsListener("PDF_Response_Queue")
     public void responseQueueListenerPdf(SqsResponse response) {
         log.info("Get response from sqs : {}", response);
         //queueListener(request.getPdfRequest());
         reportService.updateAsyncPDFReport(response);
+        String submitter = reportService.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new).getSubmitter();
+        reportService.sendReportEmail(submitter);
     }
 
+
+    /**
+     * Triggered when receiving request response from Excel service, which is responding the async report request sent earlier
+     * This will lead to updating tne target report with the Excel file location and report status.
+     * @param response response from Excel service
+     */
     @SqsListener("Excel_Response_Queue")
     public void responseQueueListenerExcel(SqsResponse response) {
         log.info("Get response from sqs : {}", response);

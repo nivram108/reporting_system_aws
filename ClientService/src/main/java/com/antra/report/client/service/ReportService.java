@@ -26,4 +26,6 @@ public interface ReportService {
     ReportVO updateReport(String reqId, ReportRequest request);
 
     InputStream getFileBodyByReqId(String reqId, FileType type);
+
+
 }

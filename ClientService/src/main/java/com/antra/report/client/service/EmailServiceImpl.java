@@ -6,6 +6,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cloud.aws.messaging.core.QueueMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+/**
+ * EmailServiceImpl send the constant email to the address when the report is generated
+ */
 @Service
 public class EmailServiceImpl implements EmailService{
 
