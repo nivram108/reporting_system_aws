@@ -1,6 +1,7 @@
 package com.antra.report.client.handler;
 
 import com.antra.report.client.exception.RequestNotFoundException;
+import com.antra.report.client.pojo.FileType;
 import com.antra.report.client.pojo.reponse.SqsResponse;
 import com.antra.report.client.service.ReportService;
 import org.slf4j.Logger;
@@ -32,9 +33,7 @@ public class ReportSQSListener {
     public void responseQueueListenerPdf(SqsResponse response) {
         log.info("Get response from sqs : {}", response);
         //queueListener(request.getPdfRequest());
-        reportService.updateAsyncPDFReport(response);
-        String submitter = reportService.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new).getSubmitter();
-        reportService.sendReportEmail(submitter);
+        reportService.updateReportFromResponse(response, FileType.PDF);
     }
 
 
@@ -47,7 +46,8 @@ public class ReportSQSListener {
     public void responseQueueListenerExcel(SqsResponse response) {
         log.info("Get response from sqs : {}", response);
         //queueListener(request.getPdfRequest());
-        reportService.updateAsyncExcelReport(response);
+        reportService.updateReportFromResponse(response, FileType.EXCEL);
+
     }
 
 //    @SqsListener(value = "Excel_Response_Queue", deletionPolicy = SqsMessageDeletionPolicy.NEVER)

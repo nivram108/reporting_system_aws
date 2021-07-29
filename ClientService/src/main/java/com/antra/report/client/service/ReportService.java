@@ -4,6 +4,7 @@ import com.antra.report.client.pojo.FileType;
 import com.antra.report.client.pojo.reponse.ReportVO;
 import com.antra.report.client.pojo.reponse.SqsResponse;
 import com.antra.report.client.pojo.request.ReportRequest;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.util.List;
@@ -13,9 +14,9 @@ public interface ReportService {
 
     ReportVO generateReportsAsync(ReportRequest request);
 
-    void updateAsyncPDFReport(SqsResponse response);
+    void updateReportFromResponse(SqsResponse response, FileType type);
 
-    void updateAsyncExcelReport(SqsResponse response);
+    void updateReportFileData(SqsResponse response, FileType type);
 
     List<ReportVO> getReportList();
 

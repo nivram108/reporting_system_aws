@@ -1,10 +1,7 @@
 package com.antra.report.client.service;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.antra.report.client.entity.ExcelReportEntity;
-import com.antra.report.client.entity.PDFReportEntity;
-import com.antra.report.client.entity.ReportRequestEntity;
-import com.antra.report.client.entity.ReportStatus;
+import com.antra.report.client.entity.*;
 import com.antra.report.client.exception.RequestNotFoundException;
 import com.antra.report.client.pojo.EmailType;
 import com.antra.report.client.pojo.FileType;
@@ -73,6 +70,7 @@ public class ReportServiceImpl implements ReportService {
      * @param request report data to update
      * @return updated report object value
      */
+    @Override
     @Transactional
     public ReportVO updateReport(String reqId, ReportRequest request) {
         ReportRequestEntity reportRequestEntity = reportRequestRepo.findById(reqId).orElse(null);
@@ -258,9 +256,7 @@ public class ReportServiceImpl implements ReportService {
     private void updateLocal(ExcelResponse excelResponse) {
         SqsResponse response = new SqsResponse();
         BeanUtils.copyProperties(excelResponse, response);
-        updateAsyncExcelReport(response);
-        String submitter = reportRequestRepo.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new).getSubmitter();
-        sendReportEmail(submitter);
+        updateReportFromResponse(response, FileType.EXCEL);
     }
 
     /**
@@ -270,9 +266,7 @@ public class ReportServiceImpl implements ReportService {
     private void updateLocal(PDFResponse pdfResponse) {
         SqsResponse response = new SqsResponse();
         BeanUtils.copyProperties(pdfResponse, response);
-        updateAsyncPDFReport(response);
-        String submitter = reportRequestRepo.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new).getSubmitter();
-        sendReportEmail(submitter);
+        updateReportFromResponse(response, FileType.PDF);
     }
 
     /**
@@ -297,18 +291,32 @@ public class ReportServiceImpl implements ReportService {
      * @param response SqsResponse that converted from the PDFService response
      */
     @Override
-    @Transactional // why this? email could fail
-    public void updateAsyncPDFReport(SqsResponse response) {
+     // why this? email could fail
+    public void updateReportFromResponse(SqsResponse response, FileType type) {
+        updateReportFileData(response, type);
+        String submitter = reportRequestRepo.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new).getSubmitter();
+        sendReportEmail(submitter);
+    }
+
+    @Override
+    @Transactional
+    public void updateReportFileData(SqsResponse response, FileType type) {
         ReportRequestEntity entity = reportRequestRepo.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new);
-        var pdfReport = entity.getPdfReport();
-        pdfReport.setUpdatedTime(LocalDateTime.now());
+        BaseReportEntity report = null;
+        if (type == FileType.PDF) {
+            report = entity.getPdfReport();
+        } else if (type == FileType.EXCEL) {
+            report = entity.getExcelReport();
+        }
+
+        report.setUpdatedTime(LocalDateTime.now());
         if (response.isFailed()) {
-            pdfReport.setStatus(ReportStatus.FAILED);
+            report.setStatus(ReportStatus.FAILED);
         } else{
-            pdfReport.setStatus(ReportStatus.COMPLETED);
-            pdfReport.setFileId(response.getFileId());
-            pdfReport.setFileLocation(response.getFileLocation());
-            pdfReport.setFileSize(response.getFileSize());
+            report.setStatus(ReportStatus.COMPLETED);
+            report.setFileId(response.getFileId());
+            report.setFileLocation(response.getFileLocation());
+            report.setFileSize(response.getFileSize());
         }
         entity.setUpdatedTime(LocalDateTime.now());
         reportRequestRepo.save(entity);
@@ -324,29 +332,29 @@ public class ReportServiceImpl implements ReportService {
     }
 
 
-    /**
-     * Update the ExcelEntity in the previous saved ReportRequestEntity if the file is successfully generated
-     * Send an email afterward.
-     * @param response SqsResponse that converted from the ExcelService response
-     */
-    @Override
-    @Transactional
-    public void updateAsyncExcelReport(SqsResponse response) {
-        ReportRequestEntity entity = reportRequestRepo.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new);
-        var excelReport = entity.getExcelReport();
-        excelReport.setUpdatedTime(LocalDateTime.now());
-        if (response.isFailed()) {
-            excelReport.setStatus(ReportStatus.FAILED);
-        } else{
-            excelReport.setStatus(ReportStatus.COMPLETED);
-            excelReport.setFileId(response.getFileId());
-            excelReport.setFileLocation(response.getFileLocation());
-            excelReport.setFileSize(response.getFileSize());
-            log.info("Set file location:" + excelReport.getFileLocation());
-        }
-        entity.setUpdatedTime(LocalDateTime.now());
-        reportRequestRepo.save(entity);
-    }
+//    /**
+//     * Update the ExcelEntity in the previous saved ReportRequestEntity if the file is successfully generated
+//     * Send an email afterward.
+//     * @param response SqsResponse that converted from the ExcelService response
+//     */
+//    @Override
+//    @Transactional
+//    public void updateAsyncExcelReport(SqsResponse response) {
+//        ReportRequestEntity entity = reportRequestRepo.findById(response.getReqId()).orElseThrow(RequestNotFoundException::new);
+//        var excelReport = entity.getExcelReport();
+//        excelReport.setUpdatedTime(LocalDateTime.now());
+//        if (response.isFailed()) {
+//            excelReport.setStatus(ReportStatus.FAILED);
+//        } else{
+//            excelReport.setStatus(ReportStatus.COMPLETED);
+//            excelReport.setFileId(response.getFileId());
+//            excelReport.setFileLocation(response.getFileLocation());
+//            excelReport.setFileSize(response.getFileSize());
+//            log.info("Set file location:" + excelReport.getFileLocation());
+//        }
+//        entity.setUpdatedTime(LocalDateTime.now());
+//        reportRequestRepo.save(entity);
+//    }
 
 
     /**
@@ -423,3 +431,19 @@ public class ReportServiceImpl implements ReportService {
         return null;
     }
 }
+
+/**
+ *                    (before)                                                                 (after)
+ *                       sync                                                                    sync
+ *                      /    \                                                                    |
+ *                     /      \                                                      update(SQSResponse, Type)
+ *     udpate(PDFResponse)   update(ExcelResponse)                                              |
+ *              |                       |                                            updateFileData(
+ *   updatePDF(SQSResponse)  udpateExcel(SQSResponse)
+ *
+ *
+ *
+ *
+ *
+ *
+ */
