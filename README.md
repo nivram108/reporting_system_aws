@@ -31,7 +31,7 @@
 - Change the fileLocation to ExcelService port, and make the download api download Excel file from S3
 
 ### PDFService
-- Annotate the consumes and produces of `createExcel` as JSON to avoid content type error
+- Annotate the consumes and produces of `createPDF` as JSON to avoid content type error
 
 ## Other Discussions
 
