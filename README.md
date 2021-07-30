@@ -1,4 +1,4 @@
-# Reportimg System Aws - Chun-Liang Yang
+# Reporting System Aws - Chun-Liang Yang
 
 ## Development notes
 
